@@ -1,0 +1,66 @@
+name: Example Custom Workflow
+
+# This is an example showing how to create your own custom workflow
+# using the reusable capture-page composite action.
+# 
+# To use this workflow:
+# 1. Copy this file and modify it for your needs
+# 2. Add your own URLs and configurations
+# 3. Customize the capture settings
+# 4. Set up schedules or triggers as needed
+#
+# NOTE: This example has workflow_dispatch enabled by default so you can test it.
+# You can also enable scheduled runs by uncommenting the schedule section below.
+
+on:
+  # Manual trigger enabled by default for testing
+  workflow_dispatch:
+  
+  # Uncomment to enable scheduled runs
+  # schedule:
+  #   - cron: '0 0 * * *'  # Daily at midnight
+
+permissions:
+  contents: read
+
+jobs:
+  example-capture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Example 1: Capture a homepage
+      - name: Capture homepage
+        uses: ./.github/actions/capture-page
+        with:
+          url: 'https://example.com'
+          output-file: 'homepage.html'
+          compress-html: 'true'
+
+      # Example 2: Capture documentation with custom settings
+      - name: Capture documentation
+        uses: ./.github/actions/capture-page
+        with:
+          url: 'https://example.com/docs'
+          output-file: 'docs.html'
+          browser-wait-until: 'load'
+          remove-unused-styles: 'false'
+          additional-args: '--browser-wait-delay=2000'
+
+      # Example 3: Capture blog post
+      - name: Capture blog post
+        uses: ./.github/actions/capture-page
+        with:
+          url: 'https://example.com/blog/latest'
+          output-directory: './blog-archives'
+
+      # Upload all captured files
+      - name: Upload captured pages
+        uses: actions/upload-artifact@v4
+        with:
+          name: custom-captures
+          path: |
+            captured-pages/
+            blog-archives/
+          retention-days: 30

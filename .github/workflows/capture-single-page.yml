@@ -1,0 +1,49 @@
+name: Capture Single Web Page
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL to capture'
+        required: true
+        type: string
+      output-file:
+        description: 'Output filename (optional)'
+        required: false
+        type: string
+        default: ''
+      browser-headless:
+        description: 'Run in headless mode'
+        required: false
+        type: boolean
+        default: true
+      compress-html:
+        description: 'Compress HTML'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Capture web page
+        uses: ./.github/actions/capture-page
+        with:
+          url: ${{ inputs.url }}
+          output-file: ${{ inputs.output-file }}
+          browser-headless: ${{ inputs.browser-headless }}
+          compress-html: ${{ inputs.compress-html }}
+
+      - name: Upload captured page
+        uses: actions/upload-artifact@v4
+        with:
+          name: captured-page
+          path: captured-pages/
+          retention-days: 30

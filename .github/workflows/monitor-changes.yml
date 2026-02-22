@@ -1,0 +1,110 @@
+name: Monitor Page Changes
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL to monitor'
+        required: true
+        type: string
+      check-interval:
+        description: 'Check interval in hours'
+        required: false
+        type: number
+        default: 24
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+
+      - name: Create output directories
+        run: |
+          mkdir -p monitored-pages/current
+          mkdir -p monitored-pages/previous
+
+      - name: Set URL to monitor
+        id: set-url
+        run: |
+          if [ -n "${{ inputs.url }}" ]; then
+            echo "url=${{ inputs.url }}" >> $GITHUB_OUTPUT
+          else
+            # Default URL when triggered by schedule
+            echo "url=https://example.com" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Capture current version
+        run: |
+          ./single-file "${{ steps.set-url.outputs.url }}" \
+            monitored-pages/current/page.html \
+            --browser-headless=true
+
+      - name: Download previous version
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: monitored-page-latest
+          path: monitored-pages/previous/
+
+      - name: Compare versions
+        id: compare
+        run: |
+          if [ -f "monitored-pages/previous/page.html" ]; then
+            if cmp -s "monitored-pages/current/page.html" "monitored-pages/previous/page.html"; then
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "No changes detected"
+            else
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "Changes detected!"
+              
+              # Show diff stats
+              echo "File sizes:"
+              echo "Previous: $(du -h monitored-pages/previous/page.html | cut -f1)"
+              echo "Current: $(du -h monitored-pages/current/page.html | cut -f1)"
+            fi
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "First capture - no previous version to compare"
+          fi
+
+      - name: Upload current version
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitored-page-latest
+          path: monitored-pages/current/page.html
+          retention-days: 30
+
+      - name: Upload timestamped version if changed
+        if: steps.compare.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitored-page-${{ github.run_number }}
+          path: monitored-pages/current/page.html
+          retention-days: 90
+
+      - name: Create change notification
+        if: steps.compare.outputs.changed == 'true'
+        run: |
+          echo "# Page Change Detected" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: ${{ steps.set-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time**: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run**: ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY

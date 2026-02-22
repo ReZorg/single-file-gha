@@ -1,0 +1,60 @@
+name: Scheduled Web Archive
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+
+      - name: Create output directory
+        run: mkdir -p archives/$(date +%Y-%m-%d)
+
+      - name: Archive configured pages
+        run: |
+          # Example: Archive a list of important pages
+          # You can customize this section to archive specific pages
+          
+          URLS=(
+            "https://example.com"
+            "https://example.org"
+          )
+          
+          for url in "${URLS[@]}"; do
+            echo "Archiving: $url"
+            ./single-file "$url" \
+              --output-directory=archives/$(date +%Y-%m-%d) \
+              --browser-headless=true \
+              --dump-content=false || echo "Failed to archive: $url"
+          done
+
+      - name: List archived files
+        run: |
+          echo "Archived files:"
+          ls -lhR archives/
+
+      - name: Upload archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-archives-${{ github.run_number }}
+          path: archives/
+          retention-days: 90

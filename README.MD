@@ -143,6 +143,27 @@ Make sure Chrome or a Chromium-based browser is installed in the default folder.
   single-file https://www.wikipedia.org --crawl-links=true --crawl-inner-links-only=false --crawl-external-links-max-depth=1 --crawl-rewrite-rule="^.*wikipedia.*$"
   ```
 
+## GitHub Actions Workflows
+
+This repository includes GitHub Actions workflows for web operations (webops):
+
+- **Capture Single Page**: Manually capture any web page
+- **Capture Multiple Pages**: Batch capture from a URL list
+- **Scheduled Archive**: Automatically archive pages on schedule
+- **Crawl Website**: Crawl and archive entire websites
+- **Monitor Changes**: Track page changes over time
+- **Custom Workflows**: Create your own using the reusable composite action
+
+See [.github/workflows/README.md](.github/workflows/README.md) for detailed documentation.
+
+### Quick Start with GitHub Actions
+
+1. Go to the **Actions** tab in your repository
+2. Select a workflow (e.g., "Capture Single Web Page")
+3. Click **Run workflow**
+4. Enter the URL and options
+5. Download captured pages from **Artifacts**
+
 ## Compile executables
 
  - Compile executables into `/dist`

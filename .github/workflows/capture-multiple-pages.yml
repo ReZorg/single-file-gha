@@ -1,0 +1,62 @@
+name: Capture Multiple Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: 'URLs to capture (one per line)'
+        required: true
+        type: string
+      browser-headless:
+        description: 'Run in headless mode'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create URL list file
+        run: |
+          echo "${{ inputs.urls }}" > urls.txt
+          echo "Created urls.txt with URLs:"
+          cat urls.txt
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+
+      - name: Create output directory
+        run: mkdir -p captured-pages
+
+      - name: Capture pages from URL list
+        run: |
+          ./single-file --urls-file=urls.txt \
+            --output-directory=captured-pages \
+            --browser-headless=${{ inputs.browser-headless }} \
+            --dump-content=false
+
+      - name: List captured files
+        run: |
+          echo "Captured files:"
+          ls -lh captured-pages/
+
+      - name: Upload captured pages
+        uses: actions/upload-artifact@v4
+        with:
+          name: captured-pages
+          path: captured-pages/
+          retention-days: 30
