@@ -16,6 +16,9 @@ on:
     # Run every 6 hours
     - cron: '0 */6 * * *'
 
+permissions:
+  contents: read
+
 jobs:
   monitor:
     runs-on: ubuntu-latest

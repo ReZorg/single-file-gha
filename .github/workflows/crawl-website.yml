@@ -23,6 +23,9 @@ on:
         type: number
         default: 4
 
+permissions:
+  contents: read
+
 jobs:
   crawl:
     runs-on: ubuntu-latest

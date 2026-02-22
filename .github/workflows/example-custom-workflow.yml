@@ -20,6 +20,9 @@ on:
   # schedule:
   #   - cron: '0 0 * * *'  # Daily at midnight
 
+permissions:
+  contents: read
+
 jobs:
   example-capture:
     runs-on: ubuntu-latest
