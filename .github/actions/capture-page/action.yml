@@ -1,0 +1,124 @@
+name: 'Capture Web Page'
+description: 'Capture a single web page using SingleFile CLI'
+author: 'ReZorg'
+
+inputs:
+  url:
+    description: 'URL of the web page to capture'
+    required: true
+  output-file:
+    description: 'Output filename (optional, uses default template if not specified)'
+    required: false
+    default: ''
+  output-directory:
+    description: 'Output directory for captured files'
+    required: false
+    default: './captured-pages'
+  browser-executable-path:
+    description: 'Path to Chrome/Chromium executable'
+    required: false
+    default: ''
+  browser-headless:
+    description: 'Run browser in headless mode'
+    required: false
+    default: 'true'
+  browser-wait-until:
+    description: 'When to consider page loaded (networkIdle, load, domContentLoaded)'
+    required: false
+    default: 'networkIdle'
+  max-resource-size:
+    description: 'Maximum resource size in MB'
+    required: false
+    default: '10'
+  compress-html:
+    description: 'Compress HTML output'
+    required: false
+    default: 'true'
+  remove-hidden-elements:
+    description: 'Remove hidden elements'
+    required: false
+    default: 'true'
+  remove-unused-styles:
+    description: 'Remove unused CSS styles'
+    required: false
+    default: 'true'
+  remove-unused-fonts:
+    description: 'Remove unused fonts'
+    required: false
+    default: 'true'
+  additional-args:
+    description: 'Additional arguments to pass to single-file CLI'
+    required: false
+    default: ''
+
+outputs:
+  output-path:
+    description: 'Path to the captured file'
+    value: ${{ steps.capture.outputs.path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Deno
+      uses: denoland/setup-deno@v2
+      with:
+        deno-version: v2.x
+
+    - name: Install Chrome/Chromium
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.browser-executable-path }}" ]; then
+          if ! command -v google-chrome &> /dev/null && ! command -v chromium-browser &> /dev/null; then
+            echo "Installing Chromium..."
+            sudo apt-get update
+            sudo apt-get install -y chromium-browser
+          fi
+        fi
+
+    - name: Create output directory
+      shell: bash
+      run: mkdir -p "${{ inputs.output-directory }}"
+
+    - name: Capture page
+      id: capture
+      shell: bash
+      run: |
+        ARGS="--browser-headless=${{ inputs.browser-headless }}"
+        ARGS="$ARGS --browser-wait-until=${{ inputs.browser-wait-until }}"
+        ARGS="$ARGS --max-resource-size=${{ inputs.max-resource-size }}"
+        ARGS="$ARGS --compress-html=${{ inputs.compress-html }}"
+        ARGS="$ARGS --remove-hidden-elements=${{ inputs.remove-hidden-elements }}"
+        ARGS="$ARGS --remove-unused-styles=${{ inputs.remove-unused-styles }}"
+        ARGS="$ARGS --remove-unused-fonts=${{ inputs.remove-unused-fonts }}"
+        ARGS="$ARGS --output-directory=${{ inputs.output-directory }}"
+        
+        if [ -n "${{ inputs.browser-executable-path }}" ]; then
+          ARGS="$ARGS --browser-executable-path=${{ inputs.browser-executable-path }}"
+        fi
+        
+        if [ -n "${{ inputs.additional-args }}" ]; then
+          ARGS="$ARGS ${{ inputs.additional-args }}"
+        fi
+        
+        if [ -n "${{ inputs.output-file }}" ]; then
+          OUTPUT_FILE="${{ inputs.output-directory }}/${{ inputs.output-file }}"
+          ./single-file "${{ inputs.url }}" "$OUTPUT_FILE" $ARGS
+          echo "path=$OUTPUT_FILE" >> $GITHUB_OUTPUT
+        else
+          ./single-file "${{ inputs.url }}" $ARGS --dump-content=false
+          # Find the most recently created file
+          OUTPUT_FILE=$(ls -t "${{ inputs.output-directory }}"/*.html 2>/dev/null | head -1)
+          echo "path=$OUTPUT_FILE" >> $GITHUB_OUTPUT
+        fi
+        
+        echo "✓ Page captured successfully"
+
+    - name: Show capture info
+      shell: bash
+      run: |
+        if [ -f "${{ steps.capture.outputs.path }}" ]; then
+          echo "Captured file: ${{ steps.capture.outputs.path }}"
+          echo "File size: $(du -h "${{ steps.capture.outputs.path }}" | cut -f1)"
+        else
+          echo "Warning: Output file not found"
+        fi

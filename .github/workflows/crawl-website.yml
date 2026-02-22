@@ -1,0 +1,80 @@
+name: Crawl and Archive Website
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Starting URL to crawl'
+        required: true
+        type: string
+      max-depth:
+        description: 'Maximum crawl depth'
+        required: false
+        type: number
+        default: 1
+      inner-links-only:
+        description: 'Crawl only internal links'
+        required: false
+        type: boolean
+        default: true
+      max-parallel-workers:
+        description: 'Maximum parallel workers'
+        required: false
+        type: number
+        default: 4
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+
+      - name: Create output directory
+        run: mkdir -p crawled-site
+
+      - name: Crawl website
+        run: |
+          ./single-file "${{ inputs.url }}" \
+            --crawl-links=true \
+            --crawl-max-depth=${{ inputs.max-depth }} \
+            --crawl-inner-links-only=${{ inputs.inner-links-only }} \
+            --max-parallel-workers=${{ inputs.max-parallel-workers }} \
+            --output-directory=crawled-site \
+            --browser-headless=true \
+            --dump-content=false
+
+      - name: Generate crawl report
+        run: |
+          echo "# Crawl Report" > crawl-report.md
+          echo "" >> crawl-report.md
+          echo "- **Starting URL**: ${{ inputs.url }}" >> crawl-report.md
+          echo "- **Max Depth**: ${{ inputs.max-depth }}" >> crawl-report.md
+          echo "- **Inner Links Only**: ${{ inputs.inner-links-only }}" >> crawl-report.md
+          echo "- **Date**: $(date)" >> crawl-report.md
+          echo "" >> crawl-report.md
+          echo "## Captured Pages" >> crawl-report.md
+          echo "" >> crawl-report.md
+          find crawled-site -name "*.html" -exec basename {} \; | sort >> crawl-report.md
+          
+          echo "Total pages captured: $(find crawled-site -name "*.html" | wc -l)"
+          cat crawl-report.md
+
+      - name: Upload crawled site
+        uses: actions/upload-artifact@v4
+        with:
+          name: crawled-site-${{ github.run_number }}
+          path: |
+            crawled-site/
+            crawl-report.md
+          retention-days: 30
