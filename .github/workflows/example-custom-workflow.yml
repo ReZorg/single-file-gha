@@ -8,10 +8,13 @@ name: Example Custom Workflow
 # 2. Add your own URLs and configurations
 # 3. Customize the capture settings
 # 4. Set up schedules or triggers as needed
+#
+# NOTE: This example has workflow_dispatch enabled by default so you can test it.
+# You can also enable scheduled runs by uncommenting the schedule section below.
 
 on:
-  # Uncomment to enable manual trigger
-  # workflow_dispatch:
+  # Manual trigger enabled by default for testing
+  workflow_dispatch:
   
   # Uncomment to enable scheduled runs
   # schedule:

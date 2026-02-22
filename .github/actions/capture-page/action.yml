@@ -106,8 +106,12 @@ runs:
           echo "path=$OUTPUT_FILE" >> $GITHUB_OUTPUT
         else
           ./single-file "${{ inputs.url }}" $ARGS --dump-content=false
-          # Find the most recently created file
-          OUTPUT_FILE=$(ls -t "${{ inputs.output-directory }}"/*.html 2>/dev/null | head -1)
+          # Find the most recently created file safely
+          OUTPUT_FILE=$(find "${{ inputs.output-directory }}" -type f -name "*.html" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+          if [ -z "$OUTPUT_FILE" ]; then
+            # Fallback for systems without -printf support
+            OUTPUT_FILE=$(find "${{ inputs.output-directory }}" -type f -name "*.html" -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -1)
+          fi
           echo "path=$OUTPUT_FILE" >> $GITHUB_OUTPUT
         fi
         
